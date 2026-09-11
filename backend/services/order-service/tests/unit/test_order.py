@@ -3,10 +3,9 @@
 import asyncio
 
 import pytest
-
-from common.errors import AppError
 from app.services import order_service
 from app.services.order_service import _TRANSITIONS, calc_shipping_fee
+from common.errors import AppError
 
 
 def test_shipping_fee_free_threshold():
@@ -39,7 +38,7 @@ class _FakeSession:
         self.committed = False
         self.rolled_back = False
 
-    def add(self, obj) -> None:  # noqa: ANN001
+    def add(self, obj) -> None:
         return None
 
     async def flush(self) -> None:
