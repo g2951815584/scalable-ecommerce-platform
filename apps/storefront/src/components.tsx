@@ -59,7 +59,7 @@ export function PageSkeleton({ lines = 4 }: { lines?: number }) {
 }
 
 export function EmptyState({ title = "暂无数据", action, children }: { title?: string; action?: React.ReactNode; children?: React.ReactNode }) {
-  return <div className="empty-state"><div className="empty-icon">⌁</div><h2>{title}</h2>{action}{children}</div>;
+  return <div className="empty-state"><div className="empty-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 7.5h16M6.5 4h11A1.5 1.5 0 0 1 19 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18.5v-13A1.5 1.5 0 0 1 6.5 4Z"/><path d="M8 11h8M8 15h5"/></svg></div><h2>{title}</h2>{action}{children}</div>;
 }
 
 export function ErrorBoundaryFallback() {

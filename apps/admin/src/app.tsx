@@ -21,5 +21,5 @@ function AdminShell() {
 }
 
 export function AdminApp() {
-  return <ConfigProvider theme={{ token: { colorPrimary: "#176b87", borderRadius: 8, fontFamily: "Inter, system-ui, sans-serif" } }}><Routes><Route path="/login" element={<LoginPage />} /><Route element={<AdminAuthGuard />}><Route path="/*" element={<AdminShell />} /></Route><Route path="*" element={<Navigate replace to="/" />} /></Routes></ConfigProvider>;
+  return <ConfigProvider theme={{ token: { colorPrimary: "#a16207", colorLink: "#7c4a06", borderRadius: 10, fontFamily: "Inter, system-ui, sans-serif", colorBgLayout: "#faf9f7" }, components: { Layout: { siderBg: "#211d1a", headerBg: "rgba(255,255,255,.88)" }, Button: { controlHeight: 40 } } }}><Routes><Route path="/login" element={<LoginPage />} /><Route element={<AdminAuthGuard />}><Route path="/*" element={<AdminShell />} /></Route><Route path="*" element={<Navigate replace to="/" />} /></Routes></ConfigProvider>;
 }
