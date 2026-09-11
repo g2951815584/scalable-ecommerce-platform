@@ -26,4 +26,4 @@ data/
 .idea/
 .vscode/
 .cline/
-
+.docker-config-local/
