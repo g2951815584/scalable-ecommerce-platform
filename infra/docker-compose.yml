@@ -1,0 +1,249 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      POSTGRES_DB: ecommerce
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecommerce}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [ecommerce-net]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [ecommerce-net]
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change-me-local-only}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [ecommerce-net]
+
+  consul:
+    image: hashicorp/consul:1.19
+    command: agent -dev -client=0.0.0.0
+    ports:
+      - "${CONSUL_PORT:-8500}:8500"
+    networks: [ecommerce-net]
+
+  user-service:
+    build:
+      context: ../backend
+      dockerfile: services/user-service/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_PORT: 8001
+      SERVICE_NAME: user-service
+      DATABASE_URL: postgresql+asyncpg://svc_user:svc_user_local@postgres:5432/ecommerce_user
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-ecommerce}:${RABBITMQ_DEFAULT_PASS:-change-me-local-only}@rabbitmq:5672/
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  catalog-service:
+    ports:
+      - "8002:8002"
+    build:
+      context: ../backend
+      dockerfile: services/catalog-service/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_PORT: 8002
+      SERVICE_NAME: catalog-service
+      DATABASE_URL: postgresql+asyncpg://svc_catalog:svc_catalog_local@postgres:5432/ecommerce_catalog
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-ecommerce}:${RABBITMQ_DEFAULT_PASS:-change-me-local-only}@rabbitmq:5672/
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  cart-service:
+    ports:
+      - "8003:8003"
+    build:
+      context: ../backend
+      dockerfile: services/cart-service/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_PORT: 8003
+      SERVICE_NAME: cart-service
+      DATABASE_URL: postgresql+asyncpg://svc_cart:svc_cart_local@postgres:5432/ecommerce_cart
+      REDIS_URL: redis://redis:6379/0
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CATALOG_SERVICE_URL: http://catalog-service:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  order-service:
+    ports:
+      - "8004:8004"
+    build:
+      context: ../backend
+      dockerfile: services/order-service/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_PORT: 8004
+      SERVICE_NAME: order-service
+      DATABASE_URL: postgresql+asyncpg://svc_order:svc_order_local@postgres:5432/ecommerce_order
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-ecommerce}:${RABBITMQ_DEFAULT_PASS:-change-me-local-only}@rabbitmq:5672/
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  payment-service:
+    ports:
+      - "8005:8005"
+    build:
+      context: ../backend
+      dockerfile: services/payment-service/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_PORT: 8005
+      SERVICE_NAME: payment-service
+      DATABASE_URL: postgresql+asyncpg://svc_payment:svc_payment_local@postgres:5432/ecommerce_payment
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-ecommerce}:${RABBITMQ_DEFAULT_PASS:-change-me-local-only}@rabbitmq:5672/
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  notification-service:
+    ports:
+      - "8006:8006"
+    build:
+      context: ../backend
+      dockerfile: services/notification-service/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_PORT: 8006
+      SERVICE_NAME: notification-service
+      DATABASE_URL: postgresql+asyncpg://svc_notification:svc_notification_local@postgres:5432/ecommerce_notification
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-ecommerce}:${RABBITMQ_DEFAULT_PASS:-change-me-local-only}@rabbitmq:5672/
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  gateway-auth:
+    build:
+      context: ./gateway-auth
+    environment:
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      JWT_ISSUER: ${JWT_ISSUER:-user-service}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-ecommerce-platform}
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  traefik:
+    image: traefik:v3
+    container_name: gateway
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - "${GATEWAY_HTTP_PORT:-8080}:80"
+      - "${TRAEFIK_DASHBOARD_PORT:-8081}:8080"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - gateway-auth
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  storefront:
+    build:
+      context: ..
+      dockerfile: apps/storefront/Dockerfile
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+  admin:
+    build:
+      context: ..
+      dockerfile: apps/admin/Dockerfile
+    restart: unless-stopped
+    networks: [ecommerce-net]
+
+networks:
+  ecommerce-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:

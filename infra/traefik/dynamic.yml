@@ -1,0 +1,196 @@
+# Traefik dynamic configuration: routing table, middleware chain, and backend
+# service definitions.
+#
+# Identity headers are injected exclusively by `gateway-auth` through the
+# `forwardAuth` middleware.  `authResponseHeaders` copies the resolved values
+# downstream AND replaces any client-supplied value of the same name, so a
+# spoofed `X-User-Id` / `X-User-Roles` / `X-Internal-Token` never reaches a
+# service.  The `/internal/*` namespace has no router and is therefore never
+# exposed outside the service network.
+
+http:
+  middlewares:
+    jwt-required:
+      forwardAuth:
+        address: "http://gateway-auth:9000/auth"
+        authResponseHeaders:
+          - X-User-Id
+          - X-User-Roles
+          - X-Internal-Token
+          - X-Client-Ip
+
+    jwt-optional:
+      forwardAuth:
+        address: "http://gateway-auth:9000/auth-optional"
+        authResponseHeaders:
+          - X-User-Id
+          - X-User-Roles
+          - X-Internal-Token
+          - X-Client-Ip
+
+  services:
+    user-service:
+      loadBalancer:
+        servers:
+          - url: "http://user-service:8001"
+    catalog-service:
+      loadBalancer:
+        servers:
+          - url: "http://catalog-service:8002"
+    cart-service:
+      loadBalancer:
+        servers:
+          - url: "http://cart-service:8003"
+    order-service:
+      loadBalancer:
+        servers:
+          - url: "http://order-service:8004"
+    payment-service:
+      loadBalancer:
+        servers:
+          - url: "http://payment-service:8005"
+    notification-service:
+      loadBalancer:
+        servers:
+          - url: "http://notification-service:8006"
+    storefront:
+      loadBalancer:
+        servers:
+          - url: "http://storefront:80"
+    admin:
+      loadBalancer:
+        servers:
+          - url: "http://admin:80"
+
+  routers:
+    # Public (no JWT): authentication, product browsing, payment webhooks.
+    auth:
+      rule: "PathPrefix(`/api/v1/auth`)"
+      service: user-service
+      entryPoints: ["web"]
+      priority: 110
+
+    catalog-categories:
+      rule: "PathPrefix(`/api/v1/categories`)"
+      service: catalog-service
+      entryPoints: ["web"]
+      priority: 108
+
+    catalog-products-public:
+      rule: "PathPrefix(`/api/v1/products`)"
+      service: catalog-service
+      entryPoints: ["web"]
+      priority: 108
+
+    payment-webhook:
+      rule: "PathRegexp(`^/api/v1/payments/(stripe|paypal)/webhook$`)"
+      service: payment-service
+      entryPoints: ["web"]
+      priority: 109
+
+    # Guest-or-logged-in: cart.
+    cart:
+      rule: "PathPrefix(`/api/v1/cart`)"
+      service: cart-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-optional"]
+      priority: 105
+
+    # Authed buyer/account routes.
+    users:
+      rule: "PathPrefix(`/api/v1/users`)"
+      service: user-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 106
+
+    orders:
+      rule: "PathPrefix(`/api/v1/orders`)"
+      service: order-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 106
+
+    payments:
+      rule: "PathPrefix(`/api/v1/payments`)"
+      service: payment-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 107
+
+    notifications:
+      rule: "PathPrefix(`/api/v1/notifications`)"
+      service: notification-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 106
+
+    # Admin API surface (role enforcement happens inside each service).
+    admin-users:
+      rule: "PathPrefix(`/api/v1/admin/users`)"
+      service: user-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-roles:
+      rule: "PathPrefix(`/api/v1/admin/roles`)"
+      service: user-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-permissions:
+      rule: "PathPrefix(`/api/v1/admin/permissions`)"
+      service: user-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-categories:
+      rule: "PathPrefix(`/api/v1/admin/categories`)"
+      service: catalog-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-products:
+      rule: "PathPrefix(`/api/v1/admin/products`)"
+      service: catalog-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-inventory:
+      rule: "PathPrefix(`/api/v1/admin/inventory`)"
+      service: catalog-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-orders:
+      rule: "PathPrefix(`/api/v1/admin/orders`)"
+      service: order-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    admin-notification-records:
+      rule: "PathPrefix(`/api/v1/admin/notification-records`)"
+      service: notification-service
+      entryPoints: ["web"]
+      middlewares: ["jwt-required"]
+      priority: 111
+
+    # Front-ends (SPA fallback handled by each nginx container).
+    admin-web:
+      rule: "PathPrefix(`/admin`)"
+      service: admin
+      entryPoints: ["web"]
+      priority: 50
+
+    storefront-web:
+      rule: "PathPrefix(`/`)"
+      service: storefront
+      entryPoints: ["web"]
+      priority: 1

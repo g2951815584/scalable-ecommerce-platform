@@ -1,0 +1,36 @@
+# Traefik static configuration.
+#
+# Routing rules, middleware and backend service definitions live in
+# `dynamic.yml` (file provider).  The gateway only listens on HTTP in local and
+# test environments; TLS terminates at the load balancer / ingress in production
+# (see docs/03-详细设计/07-平台与部署.md).
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+
+api:
+  # Local convenience only.  Disable in production.
+  insecure: true
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+    forwardedHeaders:
+      # Accept X-Forwarded-For from Docker/local peers so X-Client-Ip is correct.
+      insecure: true
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    watch: true
+    network: ecommerce-net

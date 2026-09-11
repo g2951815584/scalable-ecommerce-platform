@@ -1,0 +1,22 @@
+{
+  "name": "scalable-ecommerce-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scaffold for the scalable e-commerce microservice platform.",
+  "packageManager": "pnpm@10.21.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev:storefront": "pnpm --filter @ecommerce/storefront dev",
+    "dev:admin": "pnpm --filter @ecommerce/admin dev",
+    "build": "pnpm --recursive --if-present run build",
+    "typecheck": "pnpm --recursive --if-present run typecheck",
+    "lint": "pnpm --recursive --if-present run lint",
+    "test": "pnpm --recursive --if-present run test",
+    "compose:up": "docker compose --env-file .env -f infra/docker-compose.yml up --build",
+    "compose:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
+    "compose:observability": "docker compose --env-file .env -f infra/docker-compose.yml --profile observability up --build"
+  }
+}

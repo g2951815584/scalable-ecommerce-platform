@@ -1,0 +1,27 @@
+# JavaScript build artifacts
+node_modules/
+dist/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Python build artifacts and local virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# Runtime data and local secrets
+.env
+.env.local
+!.env.example
+infra/keys/
+data/
+*.log
+
+# Tooling and operating-system files
+.DS_Store
+.idea/
+.vscode/

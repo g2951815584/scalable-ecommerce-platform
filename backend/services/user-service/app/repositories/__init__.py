@@ -1,0 +1,61 @@
+"""SQLAlchemy repository layer for user-service."""
+
+from .address_repository import (
+    add_address,
+    clear_defaults,
+    count_active,
+    get_active_addresses,
+    get_address,
+    get_default_address,
+    soft_delete_address,
+)
+from .token_repository import (
+    add_refresh_token,
+    add_verification_code,
+    find_latest_code,
+    find_refresh_token_by_hash,
+    revoke_family,
+    revoke_refresh_tokens_by_user,
+)
+from .user_repository import (
+    add_user,
+    assign_role,
+    clear_roles,
+    get_credential,
+    get_profile,
+    get_role_by_code,
+    get_user_by_account,
+    get_user_by_email,
+    get_user_by_id,
+    get_user_by_phone,
+    list_role_codes,
+    update_credential_hash,
+)
+
+__all__ = [
+    "add_address",
+    "add_refresh_token",
+    "add_user",
+    "add_verification_code",
+    "assign_role",
+    "clear_defaults",
+    "clear_roles",
+    "count_active",
+    "find_latest_code",
+    "find_refresh_token_by_hash",
+    "get_active_addresses",
+    "get_address",
+    "get_credential",
+    "get_default_address",
+    "get_profile",
+    "get_role_by_code",
+    "get_user_by_account",
+    "get_user_by_email",
+    "get_user_by_id",
+    "get_user_by_phone",
+    "list_role_codes",
+    "revoke_family",
+    "revoke_refresh_tokens_by_user",
+    "soft_delete_address",
+    "update_credential_hash",
+]
