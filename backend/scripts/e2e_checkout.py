@@ -132,7 +132,7 @@ def main() -> None:
     pay = _post(
         f"{BASE}:8005/api/v1/payments",
         headers=buyer_h,
-        json={"order_no": order2, "channel": "STRIPE", "amount_cents": 59900},
+        json={"order_no": order2, "channel": "STRIPE", "amount_cents": 59800},
     ).json()["data"]
     _post(f"{BASE}:8005/api/v1/payments/stripe/webhook", json={
         "payment_no": pay["payment_no"], "third_party_payment_id": f"mock-{ts}",
