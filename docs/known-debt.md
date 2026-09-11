@@ -49,6 +49,7 @@
 | DEBT-014 | 商品搜索 PG 全文检索 + trigram | P3 | catalog-service | OPEN | - |
 | DEBT-015 | OAuth（Google/GitHub）登录 | P3 | user-service | OPEN | - |
 | DEBT-016 | 大表归档（库存流水/订单冷热分表） | P3 | catalog/order | OPEN | - |
+| DEBT-020 | Consul 服务发现未接入（定位待澄清） | P3 | 部署架构 | OPEN | - |
 
 ---
 
@@ -157,6 +158,13 @@
 - **影响**：当前量级单表够用；长期增长后查询与写入退化。
 - **修复方向**：按文档预留的归档冷表 + 搬迁任务（先拷后删、可重入）。
 - **验收标准**：终态订单/历史流水可归档，详情查询对调用方透明。
+
+### DEBT-020 Consul 服务发现未接入（定位待澄清）
+- **作用**：文档设计用 Consul 做服务发现，但代码未接入——服务间调用实为硬编码 hostname（`catalog-service:8002` + 环境变量覆盖），由 Docker/K8s DNS 解析。
+- **影响**：单实例无影响；多实例/非 K8s 环境缺"动态注册 + 健康摘除"（当前靠 client 熔断/重试兜底）。且文档里 Consul 与 K8s 原生 Service 的职责重叠，选型结论含糊。
+- **决策结论**：生产目标为 K8s 时，服务发现用原生 `Service`/DNS + `readinessProbe`，Consul 仅作 KV 配置中心（可选）；非 K8s 多实例部署才需要用 Consul 做注册/发现。
+- **修复方向**：在 `07-平台与部署` 澄清统一结论；据此决定 `consul` 容器去留，并同步 docker-compose。
+- **验收标准**：文档对服务发现选型给出单一无歧义结论；consul 按结论保留（仅 KV）或移除，并落地到编排与部署文档。
 
 ---
 
