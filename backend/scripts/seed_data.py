@@ -22,27 +22,40 @@ def _post(url: str, headers: dict | None = None, json: dict | None = None) -> di
     return resp.json().get("data") or {}
 
 
+def _put(url: str, headers: dict | None = None, json: dict | None = None) -> dict:
+    resp = httpx.put(url, headers=headers, json=json, timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("data") or {}
+
+
+def _ensure_user(email: str, password: str, nickname: str) -> str:
+    """Register a demo user, falling back to login when it already exists."""
+    register = httpx.post(f"{BASE}:8001/api/v1/auth/register", timeout=15,
+                          json={"email": email, "password": password, "nickname": nickname})
+    if register.status_code == 409:
+        login = httpx.post(f"{BASE}:8001/api/v1/auth/login", timeout=15,
+                           json={"account": email, "password": password})
+        login.raise_for_status()
+        return login.json()["data"]["user"]["user_id"]
+    register.raise_for_status()
+    return register.json()["data"]["user_id"]
+
+
 def main() -> None:
     ts = int(time.time()) % 100000
     admin_h = {"X-User-Roles": "ADMIN"}
 
     # 1. Admin account (register then grant ADMIN so the console login works).
-    admin = _post(
-        f"{BASE}:8001/api/v1/auth/register",
-        json={"email": "admin@example.com", "password": "Admin123!", "nickname": "系统管理员"},
-    )
-    _post(
-        f"{BASE}:8001/api/v1/admin/users/{admin['user_id']}/roles",
-        headers={**admin_h, "X-User-Id": admin["user_id"]},
+    admin_id = _ensure_user("admin@example.com", "Admin123!", "系统管理员")
+    _put(
+        f"{BASE}:8001/api/v1/users/{admin_id}/roles",
+        headers={**admin_h, "X-User-Id": admin_id},
         json={"role_codes": ["ADMIN"], "reason": "seed"},
     )
     print("[OK] admin account: admin@example.com / Admin123!")
 
     # 2. Buyer demo account.
-    _post(
-        f"{BASE}:8001/api/v1/auth/register",
-        json={"email": "buyer@example.com", "password": "Buyer123!", "nickname": "演示买家"},
-    )
+    _ensure_user("buyer@example.com", "Buyer123!", "演示买家")
     print("[OK] buyer account: buyer@example.com / Buyer123!")
 
     # 3. Category tree (level-1 categories).

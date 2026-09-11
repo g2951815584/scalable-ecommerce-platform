@@ -10,6 +10,8 @@ RUN useradd --create-home --uid 1000 appuser
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /build/service/app /app/app
+COPY --from=builder /build/service/alembic /app/alembic
+COPY --from=builder /build/service/alembic.ini /app/alembic.ini
 ENV PATH="/opt/venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER appuser
 EXPOSE 8003

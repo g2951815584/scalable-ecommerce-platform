@@ -14,6 +14,7 @@ from app.api.internal.routes import build_router as build_internal_router
 from app.api.v1.orders import build_router
 from app.core.config import get_settings
 from app.events.consumer import handle_payment_succeeded
+from app.tasks.scheduler import build_scheduler
 
 logger = logging.getLogger("order-service")
 
@@ -41,9 +42,14 @@ async def lifespan(app: FastAPI):
         publisher = None
     app.state.publisher = publisher
 
+    scheduler = build_scheduler(session_factory, publisher)
+    scheduler.start()
+    app.state.scheduler = scheduler
+
     try:
         yield
     finally:
+        scheduler.shutdown(wait=False)
         for consumer in consumers:
             await consumer.stop()
         if publisher is not None:

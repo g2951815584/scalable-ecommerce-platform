@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from app.api.internal.routes import build_router as build_internal_router
 from app.api.v1.payments import build_router
 from app.core.config import get_settings
+from app.tasks.scheduler import build_scheduler
 
 logger = logging.getLogger("payment-service")
 
@@ -34,9 +35,14 @@ async def lifespan(app: FastAPI):
         publisher = None
     app.state.publisher = publisher
 
+    scheduler = build_scheduler(session_factory, publisher)
+    scheduler.start()
+    app.state.scheduler = scheduler
+
     try:
         yield
     finally:
+        scheduler.shutdown(wait=False)
         if publisher is not None:
             await publisher.close()
         await dispose_engine(engine)

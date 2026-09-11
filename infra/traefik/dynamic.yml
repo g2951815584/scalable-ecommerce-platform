@@ -126,22 +126,15 @@ http:
       priority: 106
 
     # Admin API surface (role enforcement happens inside each service).
-    admin-users:
-      rule: "PathPrefix(`/api/v1/admin/users`)"
+    roles:
+      rule: "PathPrefix(`/api/v1/roles`)"
       service: user-service
       entryPoints: ["web"]
       middlewares: ["jwt-required"]
       priority: 111
 
-    admin-roles:
-      rule: "PathPrefix(`/api/v1/admin/roles`)"
-      service: user-service
-      entryPoints: ["web"]
-      middlewares: ["jwt-required"]
-      priority: 111
-
-    admin-permissions:
-      rule: "PathPrefix(`/api/v1/admin/permissions`)"
+    permissions:
+      rule: "PathPrefix(`/api/v1/permissions`)"
       service: user-service
       entryPoints: ["web"]
       middlewares: ["jwt-required"]

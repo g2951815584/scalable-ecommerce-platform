@@ -180,7 +180,7 @@ export function UserManagementPage() {
   async function load(nextPage = 1, search = keyword) {
     setLoading(true);
     try {
-      const data = await adminApi.get<{ items: UserRow[]; pagination: { total: number } }>("/admin/users", {
+      const data = await adminApi.get<{ items: UserRow[]; pagination: { total: number } }>("/users", {
         params: { page: nextPage, page_size: 20, keyword: search || undefined },
       });
       setUsers(data.items);
@@ -195,13 +195,13 @@ export function UserManagementPage() {
 
   useEffect(() => {
     load();
-    adminApi.get<{ items: RoleRow[] }>("/admin/roles").then((data) => setRoles(data.items)).catch(() => undefined);
+    adminApi.get<{ items: RoleRow[] }>("/roles").then((data) => setRoles(data.items)).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function toggleStatus(user: UserRow, status: string) {
     try {
-      await adminApi.put(`/admin/users/${user.user_id}/status`, { status, reason: "后台操作" });
+      await adminApi.put(`/users/${user.user_id}/status`, { status, reason: "后台操作" });
       message.success("已更新账号状态");
       load(page);
     } catch (error) {
@@ -225,7 +225,7 @@ export function UserManagementPage() {
       ),
       onOk: async () => {
         try {
-          await adminApi.put(`/admin/users/${user.user_id}/roles`, { role_codes: selected.filter(Boolean) });
+          await adminApi.put(`/users/${user.user_id}/roles`, { role_codes: selected.filter(Boolean) });
           message.success("已更新角色");
           load(page);
         } catch (error) {
@@ -283,7 +283,7 @@ export function RoleListPage() {
 
   useEffect(() => {
     setLoading(true);
-    adminApi.get<{ items: RoleRow[] }>("/admin/roles")
+    adminApi.get<{ items: RoleRow[] }>("/roles")
       .then((data) => setRoles(data.items))
       .catch((error) => message.error(errMsg(error)))
       .finally(() => setLoading(false));
