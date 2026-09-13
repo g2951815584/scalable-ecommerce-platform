@@ -11,6 +11,7 @@ Run with the backend venv::
 
 from __future__ import annotations
 
+import json
 import re
 import secrets
 from pathlib import Path
@@ -36,17 +37,33 @@ def generate_keypair() -> tuple[str, str]:
     return private_pem, public_pem
 
 
-def upsert_env(token: str) -> None:
-    env_path = ROOT / ".env"
+def _upsert_value(content: str, key: str, value: str) -> str:
+    serialized_value = json.dumps(value) if "\n" in value else value
+    serialized = f"{key}={serialized_value}"
+    pattern = rf"^{re.escape(key)}=.*$"
+    if re.search(pattern, content, flags=re.MULTILINE):
+        return re.sub(pattern, serialized, content, flags=re.MULTILINE)
+    return content.rstrip("\n") + f"\n{serialized}\n"
+
+
+def upsert_env(
+    token: str,
+    *,
+    private_pem: str = "",
+    public_pem: str = "",
+    env_path: Path | None = None,
+) -> None:
+    env_path = env_path or (ROOT / ".env")
     if not env_path.exists():
         example = ROOT / ".env.example"
         env_path.write_text(example.read_text() if example.exists() else "", encoding="utf-8")
 
     content = env_path.read_text(encoding="utf-8")
-    if "INTERNAL_TOKEN=" in content:
-        content = re.sub(r"^INTERNAL_TOKEN=.*$", f"INTERNAL_TOKEN={token}", content, flags=re.MULTILINE)
-    else:
-        content = content.rstrip("\n") + f"\nINTERNAL_TOKEN={token}\n"
+    content = _upsert_value(content, "INTERNAL_TOKEN", token)
+    if private_pem:
+        content = _upsert_value(content, "JWT_PRIVATE_KEY", private_pem)
+    if public_pem:
+        content = _upsert_value(content, "JWT_PUBLIC_KEY", public_pem)
     env_path.write_text(content, encoding="utf-8")
 
 
@@ -57,11 +74,11 @@ def main() -> None:
     (KEYS_DIR / "jwt-public.pem").write_text(public_pem, encoding="utf-8")
 
     token = secrets.token_hex(32)
-    upsert_env(token)
+    upsert_env(token, private_pem=private_pem, public_pem=public_pem)
 
     print(f"Wrote {KEYS_DIR / 'jwt-private.pem'}")
     print(f"Wrote {KEYS_DIR / 'jwt-public.pem'}")
-    print(f"Rotated INTERNAL_TOKEN in {ROOT / '.env'}")
+    print(f"Updated JWT keys and rotated INTERNAL_TOKEN in {ROOT / '.env'}")
     print("For production, inject the PEM files via K8s Secrets (JWT_PRIVATE_KEY / JWT_PUBLIC_KEY).")
 
 
